@@ -24,6 +24,7 @@ import com.marklogic.spark.reader.document.DocumentRowSchema;
 import com.marklogic.spark.reader.file.TripleRowSchema;
 import com.marklogic.spark.writer.rdf.RdfRowConverter;
 import org.apache.spark.sql.catalyst.InternalRow;
+import org.apache.spark.sql.connector.metric.CustomTaskMetric;
 import org.apache.spark.sql.connector.write.DataWriter;
 import org.apache.spark.sql.connector.write.WriterCommitMessage;
 import org.slf4j.Logger;
@@ -39,7 +40,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Uses the Java Client's WriteBatcher to handle writing rows as documents to MarkLogic.
  */
-class WriteBatcherDataWriter implements DataWriter<InternalRow> {
+public class WriteBatcherDataWriter implements DataWriter<InternalRow> {
 
     private static final Logger logger = LoggerFactory.getLogger(WriteBatcherDataWriter.class);
 
@@ -75,6 +76,15 @@ class WriteBatcherDataWriter implements DataWriter<InternalRow> {
         this.rowConverter = determineRowConverter();
         this.dataMovementManager.startJob(this.writeBatcher);
     }
+
+//    @Override
+//    public CustomTaskMetric[] currentMetricsValues() {
+//        logger.info("CURRENT TASK METRIC: " + successItemCount.get());
+//        return new CustomTaskMetric[]{
+//            new MyTaskMetric(successItemCount.get())
+////            new RobMetric("robFailureItem", failedItemCount.get())
+//        };
+//    }
 
     @Override
     public void write(InternalRow row) throws IOException {
@@ -127,7 +137,12 @@ class WriteBatcherDataWriter implements DataWriter<InternalRow> {
     }
 
     private void addBatchListeners(WriteBatcher writeBatcher) {
-        writeBatcher.onBatchSuccess(batch -> this.successItemCount.getAndAdd(batch.getItems().length));
+        writeBatcher.onBatchSuccess(batch -> {
+            if (MyPlugin.counter != null) {
+                MyPlugin.counter.inc(batch.getItems().length);
+            }
+            this.successItemCount.getAndAdd(batch.getItems().length);
+        });
         if (writeContext.isAbortOnFailure()) {
             // Logging not needed here, as WriteBatcherImpl already logs this at the warning level.
             writeBatcher.onBatchFailure((batch, failure) -> this.writeFailure.compareAndSet(null, failure));

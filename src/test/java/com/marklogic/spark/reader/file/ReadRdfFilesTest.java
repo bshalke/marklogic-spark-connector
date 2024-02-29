@@ -3,15 +3,23 @@ package com.marklogic.spark.reader.file;
 import com.marklogic.spark.AbstractIntegrationTest;
 import com.marklogic.spark.ConnectorException;
 import com.marklogic.spark.Options;
-import org.apache.spark.sql.DataFrameReader;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
+import com.marklogic.spark.writer.WriteBatcherDataWriter;
+import org.apache.spark.SparkEnv;
+import org.apache.spark.api.plugin.DriverPlugin;
+import org.apache.spark.api.plugin.ExecutorPlugin;
+import org.apache.spark.api.plugin.SparkPlugin;
+import org.apache.spark.scheduler.*;
+import org.apache.spark.sql.*;
+import org.apache.spark.status.protobuf.StoreTypes;
 import org.junit.jupiter.api.Test;
+import scala.collection.Iterable;
+import scala.collection.Iterator;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.apache.spark.executor.ExecutorMetrics;
 
 class ReadRdfFilesTest extends AbstractIntegrationTest {
 
@@ -28,6 +36,43 @@ class ReadRdfFilesTest extends AbstractIntegrationTest {
         verifyRow(rows.get(0), subject, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", "http://www.w3.org/2004/02/skos/core#Concept");
         verifyRow(rows.get(1), subject, "http://purl.org/dc/terms/creator", "wb", "http://www.w3.org/2001/XMLSchema#string", null);
         verifyRow(rows.get(4), subject, "http://www.w3.org/2004/02/skos/core#prefLabel", "Debt Management", null, "en");
+    }
+
+    private class RobListener extends SparkListener {
+
+        @Override
+        public void onExecutorMetricsUpdate(SparkListenerExecutorMetricsUpdate update) {
+            Iterable<ExecutorMetrics> iter = update.executorUpdates().values();
+            iter.foreach(executorMetrics -> {
+                logger.info("THING: " + executorMetrics.getMetricValue("plugin.com.marklogic.spark.writer.MyPlugin.robSuccessCount"));
+                return executorMetrics;
+            });
+        }
+    }
+
+    @Test
+    void rob() {
+        SparkSession session = SparkSession.builder()
+            .master("local[*]")
+            .config("spark.plugins", "com.marklogic.spark.writer.MyPlugin")
+//            .config("spark.driver.host", "localhost")
+            .config("spark.metrics.conf.*.sink.console.class", "org.apache.spark.metrics.sink.ConsoleSink")
+            .getOrCreate();
+        session.sparkContext().addSparkListener(new RobListener());
+        session.read()
+            .format(CONNECTOR_IDENTIFIER)
+            .option(Options.READ_FILES_TYPE, "rdf")
+            .load("/Users/rudin/data/1m.n3")
+//            .load("src/test/resources/rdf/englishlocale.ttl")
+            .repartition(2)
+            .write().format(CONNECTOR_IDENTIFIER)
+            .option(Options.CLIENT_URI, "admin:admin@localhost:8016")
+            .option(Options.WRITE_PERMISSIONS, DEFAULT_PERMISSIONS)
+            .option(Options.WRITE_THREAD_COUNT, 8)
+            .mode(SaveMode.Append)
+            .save();
+
+//        SparkEnv.get().metricsSystem().report();
     }
 
     /**
