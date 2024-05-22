@@ -7,10 +7,7 @@ import com.marklogic.client.io.StringHandle;
 import com.marklogic.junit5.XmlNode;
 import com.marklogic.spark.AbstractIntegrationTest;
 import com.marklogic.spark.Options;
-import org.apache.spark.sql.AnalysisException;
-import org.apache.spark.sql.DataFrameReader;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
+import org.apache.spark.sql.*;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -21,6 +18,27 @@ import static org.junit.jupiter.api.Assertions.*;
  * This tests also verifies some of the ways that Spark supports defining a path.
  */
 class ReadZipFilesTest extends AbstractIntegrationTest {
+
+
+    @Override
+    public void deleteDocumentsBeforeTestRuns() {
+        // Do nothing.
+    }
+
+    @Test
+    void argh() {
+        newZipReader()
+            .load("/Users/rudin/workspace/marklogic_chatbot/marklogic/data/gs_content.zip")
+            .write().format(CONNECTOR_IDENTIFIER)
+            .option(Options.CLIENT_URI, "admin:admin@localhost:8003")
+            .option(Options.WRITE_COLLECTIONS, "docs2")
+            .option(Options.WRITE_PERMISSIONS, "rest-reader,read,rest-writer,update")
+            .option(Options.WRITE_URI_REPLACE, ".*gs_content.zip,'/no-elements'")
+            .option(Options.WRITE_TRANSFORM_NAME, "remove-elements-transform")
+            .option(Options.WRITE_THREAD_COUNT, 16)
+            .mode(SaveMode.Append)
+            .save();
+    }
 
     @Test
     void readAndWriteFourFilesInZip() {
