@@ -122,7 +122,6 @@ class WriteRdfFilesTest extends AbstractIntegrationTest {
             "were found.");
     }
 
-
     private void writeExampleGraphToFiles(Path tempDir, String format) {
         writeExampleGraphToFiles(tempDir, format, format);
     }

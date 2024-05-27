@@ -28,6 +28,7 @@ import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
+import java.util.zip.GZIPOutputStream;
 
 class RdfFileWriter implements DataWriter<InternalRow> {
 
@@ -91,8 +92,12 @@ class RdfFileWriter implements DataWriter<InternalRow> {
     }
 
     private void createStream() throws IOException {
+        final boolean isGZIP = "gzip".equals(rdfContext.getStringOption(Options.WRITE_FILES_COMPRESSION));
         final String timestamp = new SimpleDateFormat("yyyyMMddHHmmssZ").format(new Date());
         String filename = String.format("%s-%d.%s", timestamp, partitionId, langAndExtension.extension);
+        if (isGZIP) {
+            filename += ".gz";
+        }
         Path filePath = new Path(this.path, filename);
         logger.info("Will write to: {}", filePath.toUri());
 
@@ -107,6 +112,12 @@ class RdfFileWriter implements DataWriter<InternalRow> {
         } else {
             this.outputStream = new BufferedOutputStream(fileSystem.create(filePath, false));
         }
+
+        // Is it this simple???
+        if (isGZIP) {
+            this.outputStream = new GZIPOutputStream(this.outputStream);
+        }
+
         this.stream = StreamRDFWriter.getWriterStream(this.outputStream, langAndExtension.lang);
         this.stream.start();
     }
