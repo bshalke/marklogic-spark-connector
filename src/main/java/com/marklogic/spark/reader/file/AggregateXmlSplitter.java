@@ -9,6 +9,7 @@ import org.apache.spark.sql.catalyst.expressions.GenericInternalRow;
 import org.apache.spark.unsafe.types.ByteArray;
 import org.apache.spark.unsafe.types.UTF8String;
 
+import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import java.io.ByteArrayInputStream;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Knows how to split an aggregate XML document and return a row for each user-defined child element. Each row has
@@ -31,6 +33,20 @@ class AggregateXmlSplitter {
     private final String uriNamespace;
 
     private int rowCounter = 1;
+
+    public static class MyXMLSplitter extends XMLSplitter {
+        private String encoding;
+        public MyXMLSplitter(String nsUri, String localName, String encoding) {
+            super(new XMLSplitter.BasicElementVisitor(nsUri, localName));
+            this.encoding = encoding;
+        }
+
+        @Override
+        public Stream split(InputStream input) throws IOException, XMLStreamException {
+            XMLStreamReader reader = XMLInputFactory.newFactory().createXMLStreamReader(input, this.encoding);
+            return split(reader);
+        }
+    }
 
     /**
      * @param identifierForErrors allows the caller of this class to provide a useful description to be included in

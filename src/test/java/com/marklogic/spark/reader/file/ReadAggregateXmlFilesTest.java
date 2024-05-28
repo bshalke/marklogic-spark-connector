@@ -17,6 +17,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ReadAggregateXmlFilesTest extends AbstractIntegrationTest {
 
     @Test
+    void encoding() {
+        List<Row> rows = newSparkSession().read()
+            .format(CONNECTOR_IDENTIFIER)
+            .option(Options.READ_AGGREGATES_XML_ELEMENT, "MedlineCitation")
+            .option(Options.READ_NUM_PARTITIONS, 1)
+            .load("src/test/resources/encoding/medline04.small.iso-8859-1.xml")
+            .collectAsList();
+
+        assertEquals(2, rows.size());
+    }
+
+    @Test
     void noNamespace() {
         List<Row> rows = newSparkSession().read()
             .format(CONNECTOR_IDENTIFIER)
