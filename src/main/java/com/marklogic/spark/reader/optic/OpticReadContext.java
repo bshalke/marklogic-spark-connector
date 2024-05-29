@@ -40,10 +40,7 @@ import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -133,7 +130,9 @@ public class OpticReadContext extends ContextSupport {
         // Remarkably, the use of resultDoc has consistently proven to be a few percentage points faster than using
         // resultRows with a StringHandle, even though the latter avoids the need for converting to and from a JsonNode.
         // The overhead with resultRows may be due to the processing of a multipart response; it's not yet clear.
+//        logger.info("PLAN: " + planAnalysis.getBoundedPlan().toPrettyString());
         JsonNode result = rowManager.resultDoc(plan, jsonHandle).get();
+//        logger.info("RESULT: " + result.get("rows").toPrettyString());
         return result != null && result.has("rows") ?
             result.get("rows").iterator() :
             new ArrayList<JsonNode>().iterator();
@@ -170,10 +169,13 @@ public class OpticReadContext extends ContextSupport {
     }
 
     void pushDownAggregation(Aggregation aggregation) {
-        final List<String> groupByColumnNames = Stream.of(aggregation.groupByExpressions())
+        final Collection<String> groupByColumnNames = Stream.of(aggregation.groupByExpressions())
             .map(PlanUtil::expressionToColumnName)
             .collect(Collectors.toList());
 
+        logger.info("GROUP NAMES: " + groupByColumnNames);
+
+        Set<String> temp = new HashSet<>(groupByColumnNames);
         addOperatorToPlan(PlanUtil.buildGroupByAggregation(groupByColumnNames, aggregation));
 
         StructType newSchema = buildSchemaWithColumnNames(groupByColumnNames);
@@ -216,7 +218,7 @@ public class OpticReadContext extends ContextSupport {
         this.schema = newSchema;
     }
 
-    private StructType buildSchemaWithColumnNames(List<String> groupByColumnNames) {
+    private StructType buildSchemaWithColumnNames(Collection<String> groupByColumnNames) {
         StructType newSchema = new StructType();
         for (String columnName : groupByColumnNames) {
             StructField columnField = null;

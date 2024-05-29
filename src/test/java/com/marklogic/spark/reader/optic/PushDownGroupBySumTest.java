@@ -1,16 +1,40 @@
 package com.marklogic.spark.reader.optic;
 
 import com.marklogic.spark.Options;
+import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.sum;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class PushDownGroupBySumTest extends AbstractPushDownTest {
+
+    @Test
+    void hey() {
+        newDefaultReader()
+            .option(Options.READ_OPTIC_QUERY, "op.fromView('Medical', 'Authors', '')")
+            .load()
+            .withColumn("otherID", new Column("CitationID").plus(3))
+            .groupBy("CitationID", "otherID")
+            .sum("LuckyNumber")
+            .show();
+    }
+
+    @Test
+    void hey2() {
+        newDefaultReader()
+            .option(Options.READ_OPTIC_QUERY, "op.fromView('Medical', 'Authors', 'hey')")
+            .load()
+            .withColumn("otherID", new Column("`hey.CitationID`"))
+            .groupBy("`hey.CitationID`", "otherID")
+            .sum("`hey.LuckyNumber`")
+            .show();
+    }
 
     @Test
     void groupBySum() {
@@ -19,7 +43,7 @@ class PushDownGroupBySumTest extends AbstractPushDownTest {
             newDefaultReader()
                 .option(Options.READ_OPTIC_QUERY, QUERY_WITH_NO_QUALIFIER)
                 .load()
-                .groupBy("CitationID")
+                .groupBy("CitationID", "CitationID", "CitationID", "CitationID")
                 .sum("LuckyNumber")
                 .orderBy("CitationID")
         );

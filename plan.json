@@ -1,0 +1,61 @@
+{
+  "$optic": {
+    "args": [
+      {
+        "ns": "op",
+        "fn": "from-view",
+        "args": [
+          "Medical",
+          "Authors",
+          ""
+        ]
+      },
+      {
+        "ns": "op",
+        "fn": "group-by",
+        "args": [
+          [
+            {
+              "ns": "op",
+              "fn": "schema-col",
+              "args": [
+                null,
+                null,
+                "CitationID"
+              ]
+            },
+            {
+              "ns": "op",
+              "fn": "schema-col",
+              "args": [
+                null,
+                null,
+                "CitationID"
+              ]
+            }
+          ],
+          [
+            {
+              "ns": "op",
+              "fn": "sum",
+              "args": [
+                "SUM(LuckyNumber)",
+                {
+                  "ns": "op",
+                  "fn": "schema-col",
+                  "args": [
+                    null,
+                    null,
+                    "LuckyNumber"
+                  ]
+                }
+              ]
+            }
+          ]
+        ]
+      }
+    ],
+    "fn": "operators",
+    "ns": "op"
+  }
+}
